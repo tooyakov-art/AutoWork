@@ -16,9 +16,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,22 +25,22 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-      - name: Enable GitHub Pages
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+
+      - name: Enable GitHub Pages from gh-pages branch
         continue-on-error: true
         run: |
+          sleep 5
+          # Try to create Pages from gh-pages branch
           curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/pages" \
-            -d '{"build_type":"workflow"}'
-          sleep 5
+            -d '{"source":{"branch":"gh-pages","path":"/"}}'
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
-
-      - name: Print site URL
-        run: echo "Site deployed to ${{ steps.deployment.outputs.page_url }}"
+          echo ""
+          echo "Site should be available at: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
