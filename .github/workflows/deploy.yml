@@ -5,7 +5,7 @@ on:
     branches: ['main', 'claude/*']
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,19 +24,22 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run build
+
+      - name: Enable GitHub Pages
+        continue-on-error: true
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages" \
+            -d '{"build_type":"workflow"}'
+
       - uses: actions/configure-pages@v4
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Print site URL
+        run: echo "Site deployed to ${{ steps.deployment.outputs.page_url }}"
